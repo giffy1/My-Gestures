@@ -11,7 +11,35 @@ Master
 
 ## Description
 
-MyGestures is a data collection application for Android Wear. Its purpose is to collect easily labelled (via voice commands) motion data (accelerometer & gyroscope) for training classifiers.
+MyGestures is a data collection application for Android Wear. Its purpose is to collect easily labelled motion data (raw accelerometer & gyroscope) for training classifiers for gesture recognition. The data is labelled using voice commands.
+
+## Getting Started
+
+Make sure the application is installed on both your wearable and handheld devices. If installed through the Play Store (not yet available!), then you must sync your applications using the Android Wear companion application. If installing through Android Studio, you must run the code on both the handheld and wearable. Detailed instructions on how to debug the application over Bluetooth are provided in the 'Debugging' section.
+
+Open the application on your mobile phone. Press the start button to begin collecting data. Your wearable device will receive an ongoing notification as long as the sensors are running. On your handheld device, you will also receive an ongoing notification indicating that data is being collected and stored locally. The accelerometer and gyroscope data are stored in the ACCEL.csv and GYRO.csv files respectively, both located in the motionData folder in the Downloads directory.
+
+A third file REPORT.csv contains the spoken labels. To report a label, swipe the wearable notification left and press the microphone icon. You must label your activity as either "before <activity>" or "after <activity>", where the activity can be anything from "eating", "drinking" or "sleeping" to "watering plants", "doing jumping jacks" or "washing my hands". If the perceived spoken text does not begin with the word "before" or the word "after", then it will be disregarded and no label will be recorded.
+
+Ending the handheld application will NOT stop the data logging service, because the data logging service runs as a foreground service, independent from the UI. This allows users to close the application and use their phone as they normally would with little effect on its battery life. To end the service, open the application (this can also be done by clicking on the ongoing notification); then press the stop button.
+
+Warning: There is another button to delete the data. This button will not ask for a confirmation if you click on it (I'll add one in eventually). It will delete the motionData folder and all files contained in that folder. So be careful!!
+
+## Sampling Rate
+
+The sensors are sampled at a rate of 60 Hz (see android.hardware.Sensor.SENSOR_DELAY_GAME). However, there is no guarantee that the sampling rate will be the requested sampling rate. This specifies the minimum sampling rate. The true sampling rate is the maximum among all processes which have registered a sensor listener to the sensor.
+
+Using a Sony Smartwatch3 with standard configuration, the accelerometer samples at around 60 Hz, and the gyroscope samples at around 100 Hz.
+
+See http://developer.android.com/guide/topics/sensors/sensors_overview.html
+
+## File Format
+
+The data is written into .csv (comma separated values) files. The accelerometer and gyroscope files are formatted in the same way: The first column indicates the timestamp (uptime in nanoseconds*). The remaining 3 columns indicate the x-, y-, and z-values.
+
+The REPORT.csv file contains 3 columns, a timestamp (also uptime in nanoseconds), the activity and whether or not the user started or stopped the activity.
+
+*On some devices, the timestamp does match the documentation. See http://stackoverflow.com/questions/7773954/android-sensor-timestamp-reference-time and https://code.google.com/p/android/issues/detail?id=78858
 
 ## Debugging
 
@@ -39,17 +67,33 @@ adb connect localhost:4444
 
 And you should see in the companion application that both the host and target are listed as connected. Every time you disconnect your handheld device, you need to repeat these commands, and since this can get a bit annoying, I would recommend making a .bat file which simply contain these commands.
 
-Finally to run the application, just hit run (either click the green triangle or go to Run -> Run 'wear' or Run 'mobile'. In the run panel you can select whether to run the mobile or wear application, or go to Run -> Edit Configurations to configure your run parameters.
+Finally to run the application, just hit run (either click the green triangle or go to Run -> Run 'wear' or Run 'mobile'. In the run panel you can select whether to run the mobile or wear application, or go to Run -> Edit Configurations to configure your run parameters. Since the wear module contains no Activity, make sure to select "Do not launch Activity".
 
 Having trouble?
 
-## Using the Application
+## Troubleshooting
 
-This application is intended to collect motion data from a wrist-worn Android device. Run the application on BOTH the mobile and wearable devices. Currently the mobile application is an empty activity which starts a listening service that receives buffered accelerometer/gyroscope data from the wearable. Both sensors are sampled at approximately 100 Hz (although this can be adjusted through the Android sensor API). Upon receiving the buffer, the mobile application saves the data in a .csv file, which can be opened in Excel.
+Sometimes uninstalling the application from the wearable can fix some issues. To uninstall the .apk, navigate to the folder containing adb.exe in the command prompt and, assuming the android wear is connected to your computer over port 4444, enter:
 
-The first column contains the timestamps (in nanoseconds since the sensor service started on the wearable) and the remaining three columns are the x-, y- and z-values respectively. Each sensor has its own corresponding .csv file, i.e. ACCEL14362354667.csv or GYRO143574200256.csv. The numbers following the ACCEl/GYRO represent a UTC timestamp in milliseconds given by System.currentTimeMillis() at the time the file was created. This is either when the application begins or more likely upon receiving the first accelerometer/gyroscope buffer.
+adb -s localhost:4444 uninstall edu.umass.cs.mygestures
 
-Lastly, there is a REPORT file, also with a corresponding timestamp in its filename. This file contains labels and corresponding timestamps. The first column is the timestamp in milliseconds when the label is recorded (when the user presses the label button, not sure if that is the best choice?); the second column is the activity; and the third column says whether the user started or stopped the activity.
+## Future Work
+
+Before the data collection application can be widely used for research, there are a few issues that should be resolved:
+
+1. Allow user to correct mislabels (probably on handheld)
+2. Add functionality to adjust sampling rate from handheld device
+3. Handle low-battery:
+	Should the wearable disable the sensors if low on battery?
+	If so the user should receive a notification before this occurs.
+	Can the wearable reduce sampling rate if low on battery?
+	If the wearable turns off, the handheld service should terminate
+	If the handheld turns off, the sensors should be disabled
+4. Add functionality to notification buttons on handheld
+5. Code refactoring as always
+6. UI improvements on handheld
+7. Continuous speech recognition only if battery life doesn't suffer too much
+8. GNU GPL?
 
 ## Additional
 
