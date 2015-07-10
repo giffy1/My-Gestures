@@ -14,9 +14,11 @@ import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
 import java.io.BufferedWriter;
-import java.io.FileInputStream;
+import java.io.IOException;
 
 /**
+ * The Data Writer Service is the main
+ *
  * Created by Sean on 7/7/2015.
  */
 public class DataWriterService extends Service {
@@ -44,15 +46,25 @@ public class DataWriterService extends Service {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction() != null) {
-                if (intent.getAction().equals("ACCEL_DATA")) {
+                if (intent.getAction().equals(Constants.ACTION.SEND_ACCELEROMETER_ACTION)) {
                     String line = intent.getStringExtra("sensor_data");
                     FileUtil.writeToFile(line, accelWriter);
-                }else if (intent.getAction().equals("GYRO_DATA")){
+                }else if (intent.getAction().equals(Constants.ACTION.SEND_GYROSCOPE_ACTION)){
                     String line = intent.getStringExtra("sensor_data");
                     FileUtil.writeToFile(line, gyroWriter);
-                }else if (intent.getAction().equals("LABEL")) {
+                }else if (intent.getAction().equals(Constants.ACTION.SEND_LABEL_ACTION)) {
                     String line = intent.getStringExtra("label");
+                    Log.d(TAG, "saving label: " + line);
                     FileUtil.writeToFile(line, labelWriter);
+                    try {
+                        //to make sure the labels appear readily, flush the writer. We can do this
+                        //with the label writer right away because labels are infrequent enough. We
+                        //do not need to do this with the gyro/accel writers because the data is so
+                        //frequent that the buffer fills and is flushed automatically
+                        labelWriter.flush();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
         }
@@ -60,10 +72,11 @@ public class DataWriterService extends Service {
 
     @Override
     public void onCreate(){
+        //the intent filter specifies the messages we are interested in receiving
         IntentFilter filter = new IntentFilter();
-        filter.addAction("ACCEL_DATA");
-        filter.addAction("GYRO_DATA");
-        filter.addAction("LABEL");
+        filter.addAction(Constants.ACTION.SEND_ACCELEROMETER_ACTION);
+        filter.addAction(Constants.ACTION.SEND_GYROSCOPE_ACTION);
+        filter.addAction(Constants.ACTION.SEND_LABEL_ACTION);
 
         registerReceiver(receiver, filter);
     }
@@ -78,13 +91,11 @@ public class DataWriterService extends Service {
             FileUtil.closeWriter(gyroWriter);
         if (labelWriter != null)
             FileUtil.closeWriter(labelWriter);
-        //stopForeground(true);
         super.onDestroy();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId){
-        Log.d(TAG, "START COMMAND");
         if (intent.getAction().equals(Constants.ACTION.STARTFOREGROUND_ACTION)) {
             Log.i(TAG, "Received Start Foreground Intent ");
             Intent notificationIntent = new Intent(this, MainActivity.class); //open main activity when user clicks on notification
@@ -114,7 +125,6 @@ public class DataWriterService extends Service {
                     .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
                     .setContentIntent(pendingIntent)
                     .setOngoing(true)
-                    .setVibrate(new long[]{0, 250, 200, 250, 150, 150, 75, 150, 75, 150}) //I LOVE THIS!!!
                     .setPriority(Notification.PRIORITY_MAX) //otherwise buttons will not show up!
                     .addAction(android.R.drawable.ic_media_play,
                             "Start", pausePendingIntent)
@@ -143,12 +153,6 @@ public class DataWriterService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return null;
-    }
-
-    private void saveLabel(String label){
-        if (label != null) {
-            FileUtil.writeToFile(label, labelWriter);
-        }
     }
 
 }

@@ -13,9 +13,6 @@ import com.google.android.gms.wearable.DataMapItem;
 import com.google.android.gms.wearable.Node;
 import com.google.android.gms.wearable.WearableListenerService;
 
-import java.io.BufferedWriter;
-import java.nio.ByteBuffer;
-
 public class DataReceiverService extends WearableListenerService{
 
     private static final String TAG = DataReceiverService.class.getName();
@@ -48,7 +45,7 @@ public class DataReceiverService extends WearableListenerService{
                 if (path.startsWith("/sensors/")) {
                     int sensorType = Integer.parseInt(uri.getLastPathSegment());
                     unpackSensorData(sensorType, DataMapItem.fromDataItem(dataItem).getDataMap());
-                }else if (path.startsWith("/label")) {
+                }else if (path.equals("/label")) {
                     unpackLabel(DataMapItem.fromDataItem(dataItem).getDataMap());
                 }
             }
@@ -61,7 +58,7 @@ public class DataReceiverService extends WearableListenerService{
      * @param dataMap
      */
     private void unpackSensorData(int sensorType, DataMap dataMap) {
-        //TODO: Don't use strings "accuracy", etc., specify a string in a shared (mobile + wear) library constants file
+        //TODO: Don't use strings "timestamps", etc., specify a string in a shared (mobile + wear) library constants file
         long[] timestamps = dataMap.getLongArray("timestamps");
         float[] values = dataMap.getFloatArray("values");
 
@@ -76,12 +73,12 @@ public class DataReceiverService extends WearableListenerService{
             if (sensorType == Sensor.TYPE_ACCELEROMETER) {
                 //FileUtil.writeToFile(line, accelWriter);
                 intent.putExtra("sensor_data", line);
-                intent.setAction("ACCEL_DATA"); //TODO: Make static constant String field
+                intent.setAction(Constants.ACTION.SEND_ACCELEROMETER_ACTION);
                 sendBroadcast(intent);
             }else if (sensorType == Sensor.TYPE_GYROSCOPE) {
                 //FileUtil.writeToFile(line, gyroWriter);
                 intent.putExtra("sensor_data", line);
-                intent.setAction("GYRO_DATA"); //TODO: Make static constant String field
+                intent.setAction(Constants.ACTION.SEND_GYROSCOPE_ACTION);
                 sendBroadcast(intent);
             }
 
@@ -100,14 +97,13 @@ public class DataReceiverService extends WearableListenerService{
 
         Intent intent = new Intent();
         intent.putExtra("label", line);
-        intent.setAction("LABEL"); //TODO: Make static constant String field
+        intent.setAction(Constants.ACTION.SEND_LABEL_ACTION);
         sendBroadcast(intent);
     }
 
     @Override
     public void onDestroy(){
         Log.v(TAG, "onDestroy()");
-        //stopForeground(true);
         super.onDestroy();
     }
 }

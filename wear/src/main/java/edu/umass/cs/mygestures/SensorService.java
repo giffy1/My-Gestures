@@ -23,7 +23,18 @@ import android.widget.Toast;
 import java.util.ArrayList;
 
 /**
- * Created by Sean on 6/18/2015.
+ * The wearable sensor service is responsible for collecting the accelerometer and gyroscope data on
+ * the wearable device. It is an ongoing service that is initiated and terminated through the handheld
+ * UI. All interactions on the wearable are through the notification, primarily voice labeling.
+ * <br><br>
+ * See {@link DataClient} for sending the sensor data and labels to the handheld client
+ * <br><br>
+ * See <a href=https://github.com/pocmo/SensorDashboard/blob/master/wear/src/main/java/com/github/pocmo/sensordashboard/SensorService.java>SensorDashboard</a>
+ * for similar work. This application collects all possible sensor streams from the wearable device and visualizes them on the handheld.
+ *
+ * @author Sean Noran 6/18/15
+ * @see DataClient
+ *
  */
 public class SensorService extends Service implements SensorEventListener {
 
@@ -89,7 +100,7 @@ public class SensorService extends Service implements SensorEventListener {
         client = DataClient.getInstance(this);
 
         Intent intent = new Intent(this, SensorService.class);
-        intent.setAction("RECORD_LABEL"); //TODO: Make constant String
+        intent.setAction(Constants.ACTION.RECORD_LABEL_ACTION);
         PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, 0);
 
         Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
@@ -101,11 +112,12 @@ public class SensorService extends Service implements SensorEventListener {
                 .setSmallIcon(R.drawable.ic_launcher)
                 .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
                 .setOngoing(true)
+                .setVibrate(new long[]{0,50,100,50,100,50,100,400,100,300,100,350,50,200,100,100,50,600}) //I LOVE THIS!!!
                 .setPriority(Notification.PRIORITY_MAX) //otherwise buttons will not show up!
                 .addAction(android.R.drawable.ic_btn_speak_now,
                         "Record Label", pendingIntent).build();
 
-        startForeground(1, notification); //id is arbitrary, so we choose id=1
+        startForeground(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE, notification); //id is arbitrary, so we choose id=1
 
         registerSensors();
     }
@@ -114,7 +126,7 @@ public class SensorService extends Service implements SensorEventListener {
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null) {
             if (intent.getAction() != null) {
-                if (intent.getAction().equals("RECORD_LABEL")) {
+                if (intent.getAction().equals(Constants.ACTION.RECORD_LABEL_ACTION)) {
                     labelTimestamp = SystemClock.elapsedRealtimeNanos();
                     startListening();
                 }
@@ -130,7 +142,7 @@ public class SensorService extends Service implements SensorEventListener {
     }
 
     /**
-     * @see <a href=https://github.com/pocmo/SensorDashboard/blob/master/wear/src/main/java/com/github/pocmo/sensordashboard/SensorService.java>THIS</a>
+     * register accelerometer and gyroscope sensor listeners and initialize respective buffers
      */
     private void registerSensors(){
         //initialize buffers:
@@ -298,8 +310,8 @@ public class SensorService extends Service implements SensorEventListener {
             activity = activity.trim();
 
             if (activity.length() > 0) { //could have an empty activity...
-                //sendLabelToClients(activity, tag, System.currentTimeMillis()); //TODO: send to handheld
                 Toast.makeText(getApplicationContext(), activity + ", " + tag, Toast.LENGTH_LONG).show();
+                //if we are starting the activity (tag = 1), use the timestamp after recognizing the command:
                 long timestamp = (tag == 1 ? SystemClock.elapsedRealtimeNanos() : labelTimestamp);
                 client.sendLabel(timestamp, activity, tag);
             }
