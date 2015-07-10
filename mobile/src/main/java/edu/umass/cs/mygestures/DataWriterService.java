@@ -12,50 +12,63 @@ import android.graphics.BitmapFactory;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
+import android.widget.Toast;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
 
 /**
- * The Data Writer Service is the main
+ * The Data Writer Service is the main service on the handheld application. It is responsible for writing
+ * the sensor data along with the labels to their respective files. It is a foreground service, allowing
+ * the user to close the main UI while still collecting data.
  *
- * Created by Sean on 7/7/2015.
+ * @author Sean Noran 7/7/15.
+ * @see DataReceiverService
+ * @see FileUtil
+ * @see Service
  */
 public class DataWriterService extends Service {
 
     private static final String TAG = DataWriterService.class.getName();
 
+    /** Name of the file to which to write the accelerometer data */
     private static final String ACCEL_TAG = "ACCEL";
+
+    /** Name of the file to which to write the gyroscope data */
     private static final String GYRO_TAG = "GYRO";
+
+    /** Name of the file to which to write the reported labels */
     private static final String LABEL_TAG = "REPORT";
 
-    private BufferedWriter accelWriter;
-    private BufferedWriter gyroWriter;
-    private BufferedWriter labelWriter;
+    /** Buffered writer used to log the accelerometer data */
+    private final BufferedWriter accelWriter = FileUtil.getFileWriter(ACCEL_TAG);
 
-    private void init(){
-        if (accelWriter == null)
-            accelWriter = FileUtil.getFileWriter(ACCEL_TAG);
-        if (gyroWriter == null)
-            gyroWriter = FileUtil.getFileWriter(GYRO_TAG);
-        if (labelWriter == null)
-            labelWriter = FileUtil.getFileWriter(LABEL_TAG);
-    }
+    /** Buffered writer used to log the gyroscope data */
+    private final BufferedWriter gyroWriter = FileUtil.getFileWriter(GYRO_TAG);
 
+    /** Buffered writer used to log the reported labels */
+    private final BufferedWriter labelWriter = FileUtil.getFileWriter(LABEL_TAG);
+
+    /** used to receive messages from other components of the handheld app through intents, i.e. receive labels **/
     private final BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction() != null) {
                 if (intent.getAction().equals(Constants.ACTION.SEND_ACCELEROMETER_ACTION)) {
-                    String line = intent.getStringExtra("sensor_data");
-                    FileUtil.writeToFile(line, accelWriter);
+                    String line = intent.getStringExtra(Constants.VALUES.SENSOR_DATA);
+                    synchronized (accelWriter) {
+                        FileUtil.writeToFile(line, accelWriter);
+                    }
                 }else if (intent.getAction().equals(Constants.ACTION.SEND_GYROSCOPE_ACTION)){
-                    String line = intent.getStringExtra("sensor_data");
-                    FileUtil.writeToFile(line, gyroWriter);
+                    String line = intent.getStringExtra(Constants.VALUES.SENSOR_DATA);
+                    synchronized (gyroWriter) {
+                        FileUtil.writeToFile(line, gyroWriter);
+                    }
                 }else if (intent.getAction().equals(Constants.ACTION.SEND_LABEL_ACTION)) {
-                    String line = intent.getStringExtra("label");
-                    Log.d(TAG, "saving label: " + line);
-                    FileUtil.writeToFile(line, labelWriter);
+                    String line = intent.getStringExtra(Constants.VALUES.LABEL);
+                    synchronized (labelWriter) {
+                        FileUtil.writeToFile(line, labelWriter);
+                    }
                     try {
                         //to make sure the labels appear readily, flush the writer. We can do this
                         //with the label writer right away because labels are infrequent enough. We
@@ -81,6 +94,11 @@ public class DataWriterService extends Service {
         registerReceiver(receiver, filter);
     }
 
+    //TODO: According to the Android Documentation there is no guarantee that onDestroy() will ever
+    //be called... especially if the process is killed by the OS due to low memory. So we may want
+    //to flush and close the file writers somewhere else, otherwise we may lose recent accel/gyro
+    //data since it is not being flushed regularly (only when buffer is full)
+
     @Override
     public void onDestroy(){
         Log.v(TAG, "onDestroy()");
@@ -91,28 +109,27 @@ public class DataWriterService extends Service {
             FileUtil.closeWriter(gyroWriter);
         if (labelWriter != null)
             FileUtil.closeWriter(labelWriter);
+
+        RemoteSensorManager.getInstance(this).stopSensorService();
         super.onDestroy();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId){
-        if (intent.getAction().equals(Constants.ACTION.STARTFOREGROUND_ACTION)) {
-            Log.i(TAG, "Received Start Foreground Intent ");
+        if (intent.getAction().equals(Constants.ACTION.START_FOREGROUND_ACTION)) {
+            Log.i(TAG, "Received Start Service Intent ");
+
             Intent notificationIntent = new Intent(this, MainActivity.class); //open main activity when user clicks on notification
             notificationIntent.setAction(Constants.ACTION.MAIN_ACTION);
             notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
-            Intent playIntent = new Intent(this, DataReceiverService.class);
-            playIntent.setAction(Constants.ACTION.PLAY_ACTION);
-            PendingIntent playPendingIntent = PendingIntent.getService(this, 0, playIntent, 0);
-
-            Intent pauseIntent = new Intent(this, DataReceiverService.class);
-            pauseIntent.setAction(Constants.ACTION.PAUSE_ACTION);
-            PendingIntent pausePendingIntent = PendingIntent.getService(this, 0, pauseIntent, 0);
+            Intent recordIntent = new Intent(this, DataReceiverService.class);
+            recordIntent.setAction(Constants.ACTION.RECORD_LABEL_ACTION);
+            PendingIntent recordPendingIntent = PendingIntent.getService(this, 0, recordIntent, 0);
 
             Intent stopIntent = new Intent(this, DataReceiverService.class);
-            stopIntent.setAction(Constants.ACTION.STOP_ACTION);
+            stopIntent.setAction(Constants.ACTION.STOP_FOREGROUND_ACTION);
             PendingIntent stopPendingIntent = PendingIntent.getService(this, 0, stopIntent, 0);
 
             Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
@@ -124,25 +141,21 @@ public class DataWriterService extends Service {
                     .setSmallIcon(R.drawable.ic_launcher)
                     .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
                     .setContentIntent(pendingIntent)
-                    .setOngoing(true)
                     .setPriority(Notification.PRIORITY_MAX) //otherwise buttons will not show up!
-                    .addAction(android.R.drawable.ic_media_play,
-                            "Start", pausePendingIntent)
-                    .addAction(android.R.drawable.ic_media_pause, "Pause",
-                            playPendingIntent)
-                    .addAction(android.R.drawable.ic_delete, "Stop",
-                            stopPendingIntent).build(); //TODO: No ic_media_stop, but find appropriate icons...
+                    .setDeleteIntent(stopPendingIntent) //user can swipe away notification to end service
+                    .addAction(android.R.drawable.ic_btn_speak_now,
+                            "Record Label", recordPendingIntent).build(); //got rid of notification actions, could use them later?
 
             startForeground(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE, notification);
-            init();
-        } else if (intent.getAction().equals(Constants.ACTION.PAUSE_ACTION)) {
-            Log.i(TAG, "Clicked Previous");
-        } else if (intent.getAction().equals(Constants.ACTION.PLAY_ACTION)) {
-            Log.i(TAG, "Clicked Play");
-        } else if (intent.getAction().equals(Constants.ACTION.STOP_ACTION)) {
-            Log.i(TAG, "Clicked Next");
-        } else if (intent.getAction().equals(Constants.ACTION.STOPFOREGROUND_ACTION)) {
-            Log.i(TAG, "Received Stop Foreground Intent");
+        } else if (intent.getAction().equals(Constants.ACTION.RECORD_LABEL_ACTION)) {
+            Log.i(TAG, "Clicked Record Label");
+            Toast.makeText(getApplicationContext(), "Please record labels using the wearable device!", Toast.LENGTH_LONG).show();
+        } else if (intent.getAction().equals(Constants.ACTION.STOP_FOREGROUND_ACTION)) {
+            Log.i(TAG, "Received Stop Service Intent");
+
+            //make sure wearable sensor service stops when the service ends
+            RemoteSensorManager.getInstance(this).stopSensorService();
+
             stopForeground(true);
             stopSelf();
         }

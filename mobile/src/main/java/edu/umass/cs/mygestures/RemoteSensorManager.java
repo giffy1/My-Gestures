@@ -15,6 +15,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import edu.umass.cs.shared.SharedConstants;
+
 /**
  * TODO: Create RemoteSensorService instead, which extends Service: When the
  * service starts, connect to the Google API client and send the start sensor
@@ -30,10 +32,6 @@ public class RemoteSensorManager {
 
     private ExecutorService executorService;
     private GoogleApiClient googleApiClient;
-
-    //TODO: Used in both mobile/wear: make common
-    private static final String START_SENSOR_SERVICE = "START_SENSOR_SERVICE";
-    private static final String STOP_SENSOR_SERVICE = "STOP_SENSOR_SERVICE";
 
     public static synchronized RemoteSensorManager getInstance(Context context) {
         if (instance == null) {
@@ -67,7 +65,7 @@ public class RemoteSensorManager {
             @Override
             public void run() {
                 Log.v(TAG, "Start Sensor Service");
-                sendMessageInBackground(START_SENSOR_SERVICE);
+                sendMessageInBackground(SharedConstants.COMMANDS.START_SENSOR_SERVICE);
             }
         });
     }
@@ -77,7 +75,7 @@ public class RemoteSensorManager {
             @Override
             public void run() {
                 Log.v(TAG, "Stop Sensor Service");
-                sendMessageInBackground(STOP_SENSOR_SERVICE);
+                sendMessageInBackground(SharedConstants.COMMANDS.STOP_SENSOR_SERVICE);
             }
         });
     }

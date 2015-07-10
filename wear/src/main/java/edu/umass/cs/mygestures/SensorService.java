@@ -22,6 +22,8 @@ import android.widget.Toast;
 
 import java.util.ArrayList;
 
+import edu.umass.cs.shared.SharedConstants;
+
 /**
  * The wearable sensor service is responsible for collecting the accelerometer and gyroscope data on
  * the wearable device. It is an ongoing service that is initiated and terminated through the handheld
@@ -47,15 +49,11 @@ public class SensorService extends Service implements SensorEventListener {
     /** device gyroscope sensor */
     private Sensor gyroSensor;
 
+    /** used for debugging purposes */
     private static final String TAG = SensorService.class.getName();
 
+    /** used to communicate with the handheld application */
     private DataClient client;
-
-    /** Start Gesture Voice Command */
-    private static final String START_COMMAND = "before";
-
-    /** Stop Gesture Voice Command */
-    private static final String STOP_COMMAND = "after";
 
     /** Speech Recognizer object to transcribe speech */
     protected SpeechRecognizer mSpeechRecognizer;
@@ -105,6 +103,7 @@ public class SensorService extends Service implements SensorEventListener {
 
         Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
 
+        //notify the user that the application has started - the user can also record labels using the notification
         Notification notification = new NotificationCompat.Builder(this)
                 .setContentTitle("My Gestures")
                 .setTicker("My Gestures")
@@ -113,9 +112,8 @@ public class SensorService extends Service implements SensorEventListener {
                 .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
                 .setOngoing(true)
                 .setVibrate(new long[]{0,50,100,50,100,50,100,400,100,300,100,350,50,200,100,100,50,600}) //I LOVE THIS!!!
-                .setPriority(Notification.PRIORITY_MAX) //otherwise buttons will not show up!
-                .addAction(android.R.drawable.ic_btn_speak_now,
-                        "Record Label", pendingIntent).build();
+                .setPriority(Notification.PRIORITY_MAX)
+                .addAction(android.R.drawable.ic_btn_speak_now, "Record Label", pendingIntent).build();
 
         startForeground(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE, notification); //id is arbitrary, so we choose id=1
 
@@ -178,6 +176,9 @@ public class SensorService extends Service implements SensorEventListener {
         }
     }
 
+    /**
+     * unregister the sensor listeners, this is important for the battery life!
+     */
     private void unregisterSensors() {
         if (mSensorManager != null) {
             mSensorManager.unregisterListener(this, accelSensor);
@@ -187,7 +188,7 @@ public class SensorService extends Service implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        synchronized(this){
+        synchronized(this){ //add sensor data to the appropriate buffer
             if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER){
                 accelTimestamps[accelIndex] = event.timestamp;
                 accelValues[3*accelIndex] = event.values[0];
@@ -225,6 +226,9 @@ public class SensorService extends Service implements SensorEventListener {
         return null;
     }
 
+    /**
+     * start the speech recognition service for recording audio labels
+     */
     private void startListening(){
         mSpeechRecognizer = SpeechRecognizer.createSpeechRecognizer(getApplicationContext());
         mSpeechRecognizer.setRecognitionListener(new SpeechRecognitionListener());
@@ -255,21 +259,22 @@ public class SensorService extends Service implements SensorEventListener {
             Log.v(TAG, "End of Speech");
         }
 
+        /**
+         * TODO: Respond appropriately to errors see http://developer.android.com/reference/android/speech/SpeechRecognizer.html#ERROR_AUDIO
+         */
         @Override
         public void onError(int error)
         {
             Toast.makeText(getApplicationContext(), "Error " + error, Toast.LENGTH_LONG).show();
-            //TODO: Respond appropriately to error
         }
 
         @Override
         public void onEvent(int eventType, Bundle params) {}
 
-        //TODO: Using onResults for handling speech recognition will work sufficiently well, but
-        //there is often a delay since the onResults method is called only once it is clear that
-        //the user has stopped speaking. We could use onPartialResults to retrieve labels more
-        //quickly and more naturally ... but note that onPartialResults is not guaranteed to be
-        //called!
+        //TODO: Use onPartialResults for more prompt response
+        // Using onResults for handling speech recognition will work sufficiently well, but there is often a delay
+        // since the onResults method is called only once it is clear that the user has stopped speaking. We could
+        // use onPartialResults to retrieve labels promptly ... but note that onPartialResults is not guaranteed to be called
         @Override
         public void onPartialResults(Bundle partialResults) {}
 
@@ -279,28 +284,26 @@ public class SensorService extends Service implements SensorEventListener {
         @Override
         public void onResults(Bundle results)
         {
-            Log.v(TAG, "onResults: " + results);
-
             ArrayList data = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
             String activity = "";
-            int tag = -1;
-            String[] words = null;
+            String command = ""; //start/stop commands
+            String[] words = new String[]{};
 
-            //look for "start" or "stop" command
+            //look for start or stop command, disregard other results
             for (int i = 0; i < data.size(); i++)
             {
                 String result = data.get(i).toString();
                 Log.d(TAG, "result " + result);
                 words = result.split(" ");
-                if (words[0].equalsIgnoreCase(START_COMMAND)){
-                    tag = 1; //start
+                if (words[0].equalsIgnoreCase(SharedConstants.VOICE_COMMANDS.START_COMMAND)){
+                    command = SharedConstants.VOICE_COMMANDS.START_COMMAND; //start
                     break;
-                }else if (words[0].equalsIgnoreCase(STOP_COMMAND)){
-                    tag = 0; //stop
+                }else if (words[0].equalsIgnoreCase(SharedConstants.VOICE_COMMANDS.STOP_COMMAND)){
+                    command = SharedConstants.VOICE_COMMANDS.STOP_COMMAND; //start
                     break;
                 }
             }
-            if (tag == -1)
+            if (command.length() == 0)
                 return;
 
             //store the activity
@@ -310,10 +313,11 @@ public class SensorService extends Service implements SensorEventListener {
             activity = activity.trim();
 
             if (activity.length() > 0) { //could have an empty activity...
-                Toast.makeText(getApplicationContext(), activity + ", " + tag, Toast.LENGTH_LONG).show();
-                //if we are starting the activity (tag = 1), use the timestamp after recognizing the command:
-                long timestamp = (tag == 1 ? SystemClock.elapsedRealtimeNanos() : labelTimestamp);
-                client.sendLabel(timestamp, activity, tag);
+                Toast.makeText(getApplicationContext(), activity + ", " + command, Toast.LENGTH_LONG).show();
+                //if we are starting the activity, use the timestamp after recognizing the command:
+                long timestamp = (command.equalsIgnoreCase(SharedConstants.VOICE_COMMANDS.START_COMMAND) ?
+                        SystemClock.elapsedRealtimeNanos() : labelTimestamp);
+                client.sendLabel(timestamp, activity, command);
             }
         }
 

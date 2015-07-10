@@ -13,6 +13,16 @@ import com.google.android.gms.wearable.DataMapItem;
 import com.google.android.gms.wearable.Node;
 import com.google.android.gms.wearable.WearableListenerService;
 
+import edu.umass.cs.shared.SharedConstants;
+
+/**
+ * The Data Receiver Service listens for data sent from the wearable to the handheld device. In
+ * particular, the service is notified when the accelerometer and gyroscope buffers are updated
+ * in the data layer and when a voice label is recorded and sent to the data layer.
+ *
+ * @see com.google.android.gms.common.api.GoogleApiClient
+ * @see WearableListenerService
+ */
 public class DataReceiverService extends WearableListenerService{
 
     private static final String TAG = DataReceiverService.class.getName();
@@ -21,46 +31,43 @@ public class DataReceiverService extends WearableListenerService{
     public void onPeerConnected(Node peer) {
         super.onPeerConnected(peer);
 
-        Log.i(TAG, "Connected: " + peer.getDisplayName() + " (" + peer.getId() + ")");
+        Log.i(TAG, "Connected to: " + peer.getDisplayName() + " [" + peer.getId() + "]");
     }
 
     @Override
     public void onPeerDisconnected(Node peer) {
         super.onPeerDisconnected(peer);
 
-        Log.i(TAG, "Disconnected: " + peer.getDisplayName() + " (" + peer.getId() + ")");
+        Log.i(TAG, "Disconnected from: " + peer.getDisplayName() + " [" + peer.getId() + "]");
     }
 
+    //Note: This is only called when the data is actually changed!! Since we have a timestamp in the data event, that is no problem
     @Override
     public void onDataChanged(DataEventBuffer dataEvents) {
-        //Log.d(TAG, "onDataChanged()");
-
         for (DataEvent dataEvent : dataEvents) {
             if (dataEvent.getType() == DataEvent.TYPE_CHANGED) {
                 DataItem dataItem = dataEvent.getDataItem();
-                Uri uri = dataItem.getUri();
+                Uri uri = dataItem.getUri(); //easy way to manipulate path we receive
                 String path = uri.getPath();
 
-                //1 = Accelerometer, 4 = Gyroscope
-                if (path.startsWith("/sensors/")) {
+                if (path.startsWith(SharedConstants.DATA_LAYER_CONSTANTS.SENSOR_PATH)) {
                     int sensorType = Integer.parseInt(uri.getLastPathSegment());
-                    unpackSensorData(sensorType, DataMapItem.fromDataItem(dataItem).getDataMap());
-                }else if (path.equals("/label")) {
-                    unpackLabel(DataMapItem.fromDataItem(dataItem).getDataMap());
+                    onReceiveSensorData(sensorType, DataMapItem.fromDataItem(dataItem).getDataMap());
+                }else if (path.equals(SharedConstants.DATA_LAYER_CONSTANTS.LABEL_PATH)) {
+                    onReceiveLabel(DataMapItem.fromDataItem(dataItem).getDataMap());
                 }
             }
         }
     }
 
     /**
-     * @see <a href=https://github.com/pocmo/SensorDashboard/blob/master/mobile/src/main/java/com/github/pocmo/sensordashboard/SensorReceiverService.java>this</a>
-     * @param sensorType
-     * @param dataMap
+     * Called upon receiving accelerometer or gyroscope sensor data from the wearable device
+     * @param sensorType the type of sensor, corresponding to the Sensor class constants, i.e. Sensor.TYPE_ACCELEROMETER
+     * @param dataMap the map containing the key-value pairs for the sensor data (timestamps and xyz values)
      */
-    private void unpackSensorData(int sensorType, DataMap dataMap) {
-        //TODO: Don't use strings "timestamps", etc., specify a string in a shared (mobile + wear) library constants file
-        long[] timestamps = dataMap.getLongArray("timestamps");
-        float[] values = dataMap.getFloatArray("values");
+    private void onReceiveSensorData(int sensorType, DataMap dataMap) {
+        long[] timestamps = dataMap.getLongArray(SharedConstants.VALUES.TIMESTAMPS);
+        float[] values = dataMap.getFloatArray(SharedConstants.VALUES.SENSOR_VALUES);
 
         for (int i = 0; i < timestamps.length; i++){
             long timestamp = timestamps[i];
@@ -69,15 +76,15 @@ public class DataReceiverService extends WearableListenerService{
             float z = values[3*i+2];
 
             String line = timestamp + "," + x + "," + y + "," + z;
+
+            //broadcast line to data writer service
             Intent intent = new Intent();
             if (sensorType == Sensor.TYPE_ACCELEROMETER) {
-                //FileUtil.writeToFile(line, accelWriter);
-                intent.putExtra("sensor_data", line);
+                intent.putExtra(Constants.VALUES.SENSOR_DATA, line);
                 intent.setAction(Constants.ACTION.SEND_ACCELEROMETER_ACTION);
                 sendBroadcast(intent);
             }else if (sensorType == Sensor.TYPE_GYROSCOPE) {
-                //FileUtil.writeToFile(line, gyroWriter);
-                intent.putExtra("sensor_data", line);
+                intent.putExtra(Constants.VALUES.SENSOR_DATA, line);
                 intent.setAction(Constants.ACTION.SEND_GYROSCOPE_ACTION);
                 sendBroadcast(intent);
             }
@@ -88,15 +95,20 @@ public class DataReceiverService extends WearableListenerService{
         }
     }
 
-    private void unpackLabel(DataMap dataMap){
-        String activity = dataMap.getString("activity");
-        int tag = dataMap.getInt("tag");
-        long timestamp = dataMap.getLong("timestamp");
+    /**
+     * Called upon receiving a label from the wearable device
+     * @param dataMap a map containing the key-value pairs describing the label (activity, before or after, and a timestamp)
+     */
+    private void onReceiveLabel(DataMap dataMap){
+        String activity = dataMap.getString(SharedConstants.VALUES.ACTIVITY);
+        String command = dataMap.getString(SharedConstants.VALUES.COMMAND);
+        long timestamp = dataMap.getLong(SharedConstants.VALUES.LABEL_TIMESTAMP);
 
-        String line = timestamp + "," + activity + "," + (tag == 1 ? "Before" : "After"); //TODO: Don't use tag == 1, use common constant instead of 1
+        String line = timestamp + "," + activity + "," + command;
 
+        //broadcast label to main handheld service
         Intent intent = new Intent();
-        intent.putExtra("label", line);
+        intent.putExtra(Constants.VALUES.LABEL, line);
         intent.setAction(Constants.ACTION.SEND_LABEL_ACTION);
         sendBroadcast(intent);
     }

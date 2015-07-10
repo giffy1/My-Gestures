@@ -16,7 +16,7 @@
         android:textAppearance="?android:attr/textAppearanceLarge" />
 
     <Button
-        android:id="@+id/button1"
+        android:id="@+id/start_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@+id/textView1"
@@ -25,10 +25,10 @@
         android:text="Start Foreground Service" />
 
     <Button
-        android:id="@+id/button2"
+        android:id="@+id/stop_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/button1"
+        android:layout_below="@+id/start_button"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="35dp"
         android:text="Stop Foreground Service" />
@@ -37,7 +37,7 @@
         android:id="@+id/delete_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/button2"
+        android:layout_below="@+id/stop_button"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="35dp"
         android:text="Delete Data" />

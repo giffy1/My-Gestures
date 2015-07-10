@@ -1,6 +1,7 @@
 package edu.umass.cs.mygestures;
 
 import android.os.Environment;
+import android.util.Log;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -10,36 +11,43 @@ import java.io.IOException;
 /**
  * This class handles file input/output operations, such as saving the accelerometer/gyroscope
  * data and labels, opening/closing file readers/writers, and deleting the data storage location.
- * TODO: This is all done using static operations, but because reading/writing inherently introduces
- * race conditions, this is not a recommended approach. This needs to be refactored!
  */
 public class FileUtil {
 
+    /** tag used for debugging purposes */
+    private static final String TAG = FileUtil.class.getName();
+
+    /** default name of the application's directory */
+    private static final String DEFAULT_DIRECTORY = "motion-data";
+
+    /** CSV extension */
+    private static final String CSV_EXTENSION = ".csv";
+
     /**
      * Returns a root directory where the logging takes place
-     * @return
+     * @return File of the root directory
      */
     private static File getStorageLocation(){
-        File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),"motionData");
+        File root = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), DEFAULT_DIRECTORY);
         if(!root.exists())
-            root.mkdir();
+            if (!root.mkdir()){
+                Log.w(TAG, "Failed to create directory! It may already exist");
+            }
         return root;
     }
 
     /**
      * Returns a file writer for a device
-     * @param tag file name
-     * @return
+     * @param filename file name (without extension!)
+     * @return the file writer for the particular filename
      */
-    public static BufferedWriter getFileWriter(String tag){
+    public static BufferedWriter getFileWriter(String filename){
         File rootDir = getStorageLocation();
-        java.util.Date date= new java.util.Date();
-        long time = date.getTime();
-        String fileName = tag+".csv";
+        String fullFileName = filename+CSV_EXTENSION;
 
         BufferedWriter out = null;
         try{
-            out = new BufferedWriter(new FileWriter(new File(rootDir,fileName)));
+            out = new BufferedWriter(new FileWriter(new File(rootDir,fullFileName)));
         }catch(IOException e){
             e.printStackTrace();
         }
@@ -47,25 +55,23 @@ public class FileUtil {
     }
 
     /**
-     * Write the log for a device
+     * Write the log to the specified file writer
      * @param s log to write
      * @param out file writer
      */
-    public static void writeToFile(String s, BufferedWriter out) {
-        synchronized(out) {
-            try{
-                out.write(s+"\n");
-            } catch(IOException e){
-                e.printStackTrace();
-            }
+    public static void writeToFile(String s, final BufferedWriter out) {
+        try{
+            out.write(s+"\n");
+        } catch(IOException e){
+            e.printStackTrace();
         }
     }
 
     /**
-     * Close the log writer for a device
-     * @param out log writer
+     * Close and flush the given log writer. Flushing ensures that the data in the buffer is first save to the file
+     * @param out file writer
      */
-    public static void closeWriter(BufferedWriter out) {
+    public static void closeWriter(final BufferedWriter out) {
         try{
             out.flush();
             out.close();
@@ -76,7 +82,7 @@ public class FileUtil {
 
     /**
      * Deletes all the data from the log directory
-     * @return
+     * @return true if successfully deleted
      */
     public static boolean deleteData(){
         boolean deleted = false;
@@ -84,8 +90,10 @@ public class FileUtil {
         if(root!=null){
             File files[] = root.listFiles();
             if(files!=null){
-                for(int i=0;i<files.length;i++)
-                    files[i].delete();
+                for(File file : files) {
+                    if (!file.delete())
+                        Log.d(TAG, "Deleting file failed: " + file.getName());
+                }
             }
             deleted = root.delete();
         }

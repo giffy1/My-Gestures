@@ -1,16 +1,21 @@
 package edu.umass.cs.mygestures;
 
 import android.content.Intent;
-import android.util.Log;
 
 import com.google.android.gms.wearable.MessageEvent;
 import com.google.android.gms.wearable.WearableListenerService;
 
-public class ListenerService extends WearableListenerService {
-    private static final String TAG = ListenerService.class.getName();
+import edu.umass.cs.shared.SharedConstants;
 
-    private static final String START_SENSOR_SERVICE = "START_SENSOR_SERVICE"; //TODO: Used in both mobile/wear: make common
-    private static final String STOP_SENSOR_SERVICE = "STOP_SENSOR_SERVICE";
+/**
+ * The Listener Service is responsible for handling messages received from the handheld device.
+ * Currently, this includes only commands to start and stop the sensor service, but it could
+ * also include commands to change the sampling rate, or provide some sort of notification on
+ * the wearable device.
+ */
+public class ListenerService extends WearableListenerService {
+    /** used for debugging purposes */
+    private static final String TAG = ListenerService.class.getName();
 
     @Override
     public void onCreate() {
@@ -19,13 +24,11 @@ public class ListenerService extends WearableListenerService {
 
     @Override
     public void onMessageReceived(MessageEvent messageEvent) {
-        //Log.d(TAG, "Received message: " + messageEvent.getPath());
-
-        if (messageEvent.getPath().equals(START_SENSOR_SERVICE)) {
+        if (messageEvent.getPath().equals(SharedConstants.COMMANDS.START_SENSOR_SERVICE)) {
             startService(new Intent(this, SensorService.class));
         }
 
-        if (messageEvent.getPath().equals(STOP_SENSOR_SERVICE)) {
+        if (messageEvent.getPath().equals(SharedConstants.COMMANDS.STOP_SENSOR_SERVICE)) {
             stopService(new Intent(this, SensorService.class));
         }
     }

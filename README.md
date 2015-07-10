@@ -77,6 +77,14 @@ Sometimes uninstalling the application from the wearable can fix some issues. To
 
 adb -s localhost:4444 uninstall edu.umass.cs.mygestures
 
+## Known Issues
+
+The data is stored in CSV files. When a CSV file is saved manually, all long-precision fields in scientific notation are truncated. This problem has been confirmed by Microsoft at https://support.microsoft.com/en-us/kb/216023.
+
+A workaround is to make sure to change each column containing values displayed in scientific notation is changed to be 'General Number' format.
+
+If you don't plan on making changes to any of the files, i.e. to correct a mislabelled activity, then do not save the file, even if prompted!
+
 ## Future Work
 
 Before the data collection application can be widely used for research, there are a few issues that should be resolved:
@@ -89,8 +97,8 @@ Before the data collection application can be widely used for research, there ar
 	Can the wearable reduce sampling rate if low on battery?
 	If the wearable turns off, the handheld service should terminate
 	If the handheld turns off, the sensors should be disabled
-4. Add functionality to notification buttons on handheld
-5. Code refactoring as always
+4. Add functionality to notification button on handheld
+5. Allow wearable to store data locally temporarily, when not near phone
 6. UI improvements on handheld
 7. Continuous speech recognition only if battery life doesn't suffer too much
 8. GNU GPL?

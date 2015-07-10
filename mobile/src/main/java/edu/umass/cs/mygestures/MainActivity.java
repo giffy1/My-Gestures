@@ -1,20 +1,34 @@
 package edu.umass.cs.mygestures;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+/**
+ * The Main Activity is the application's entry point on the handheld device. It is where the user
+ * interacts with the background data collection service. Here the user can start/stop the service
+ * and delete the existing data if necessary.
+ * @author Sean Noran 6/8/18
+ * @See Activity
+ * @See RemoteSensorManager
+ */
 public class MainActivity extends Activity {
+    //TODO: Add options to change sampling rate, choose storage location/filename, edit falsely entered labels, etc.
+    // The UI is currently very sparse... we may not need much, but it might be good to add some of these options
+    //TODO: Look into lambda expressions (Java 1.7 and later) to "fix" warnings - might be more appropriate syntax?
+
+    /** used for debugging purposes */
+    private static final String TAG = MainActivity.class.getName();
 
     private Button startButton, stopButton, deleteButton;
 
+    /** The sensor manager which handles sensors on the wearable device remotely */
     private RemoteSensorManager remoteSensorManager;
-
-    private static final String TAG = MainActivity.class.getName();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -23,15 +37,15 @@ public class MainActivity extends Activity {
 
         remoteSensorManager = RemoteSensorManager.getInstance(this);
 
-        startButton = (Button) findViewById(R.id.button1);
-        stopButton = (Button) findViewById(R.id.button2);
+        startButton = (Button) findViewById(R.id.start_button);
+        stopButton = (Button) findViewById(R.id.stop_button);
         deleteButton = (Button) findViewById(R.id.delete_button);
 
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent startIntent = new Intent(MainActivity.this, DataWriterService.class);
-                startIntent.setAction(Constants.ACTION.STARTFOREGROUND_ACTION);
+                startIntent.setAction(Constants.ACTION.START_FOREGROUND_ACTION);
                 startService(startIntent);
 
                 remoteSensorManager.startSensorService();
@@ -42,7 +56,7 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 Intent stopIntent = new Intent(MainActivity.this, DataWriterService.class);
-                stopIntent.setAction(Constants.ACTION.STOPFOREGROUND_ACTION);
+                stopIntent.setAction(Constants.ACTION.STOP_FOREGROUND_ACTION);
                 startService(stopIntent);
 
                 remoteSensorManager.stopSensorService();
@@ -51,30 +65,26 @@ public class MainActivity extends Activity {
 
         deleteButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v){
-                if (FileUtil.deleteData()){
-                    Toast.makeText(getApplicationContext(), "Data successfully deleted.", Toast.LENGTH_LONG).show();
-                }else{
-                    Toast.makeText(getApplicationContext(), "Error: Directory may not have been deleted!", Toast.LENGTH_LONG).show();
-                }
+            public void onClick(View v) {
+                new AlertDialog.Builder(MainActivity.this)
+                        .setMessage("Are you sure you want to delete the gestures data?")
+                        .setCancelable(false)
+                        .setPositiveButton("Yes, Delete Data", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int id) {
+                                if (FileUtil.deleteData()) {
+                                    Toast.makeText(getApplicationContext(), "Data successfully deleted.", Toast.LENGTH_LONG).show();
+                                } else {
+                                    Toast.makeText(getApplicationContext(), "Error: Directory may not have been deleted!", Toast.LENGTH_LONG).show();
+                                }
+                            }
+                        })
+                        .setNegativeButton("No, I misclicked", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int id){} //do nothing
+                        })
+                        .show();
             }
         });
-    }
-
-    @Override
-    protected void onStart(){
-        super.onStart();
-    }
-
-    @Override
-    protected void onStop(){
-        //remoteSensorManager.stopSensorService();
-        super.onStop();
-    }
-
-    @Override
-    protected void onDestroy(){
-        //remoteSensorManager.stopSensorService();
-        super.onDestroy();
     }
 }
