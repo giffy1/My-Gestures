@@ -25,11 +25,18 @@ public class ListenerService extends WearableListenerService {
     @Override
     public void onMessageReceived(MessageEvent messageEvent) {
         if (messageEvent.getPath().equals(SharedConstants.COMMANDS.START_SENSOR_SERVICE)) {
-            startService(new Intent(this, SensorService.class));
+            Intent startServiceIntent = new Intent(this, SensorService.class);
+            startServiceIntent.setAction(Constants.ACTION.START_SERVICE);
+            startService(startServiceIntent);
         }
 
         if (messageEvent.getPath().equals(SharedConstants.COMMANDS.STOP_SENSOR_SERVICE)) {
-            stopService(new Intent(this, SensorService.class));
+            Intent stopServiceIntent = new Intent(this, SensorService.class);
+            stopServiceIntent.setAction(Constants.ACTION.STOP_SERVICE);
+            startService(stopServiceIntent);
+
+            //note: we call startService() instead of stopService() and pass in an intent with the stop service action,
+            //so that the service can unregister the sensors and do anything else it needs to do and then call stopSelf()
         }
     }
 }

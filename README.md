@@ -101,7 +101,8 @@ Before the data collection application can be widely used for research, there ar
 5. Allow wearable to store data locally temporarily, when not near phone
 6. UI improvements on handheld
 7. Continuous speech recognition only if battery life doesn't suffer too much
-8. GNU GPL?
+8. Add a file hierarchy to the data, so the user can collect data for multiple sessions
+9. GNU GPL?
 
 ## Additional
 

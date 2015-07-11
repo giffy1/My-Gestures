@@ -96,47 +96,48 @@ public class SensorService extends Service implements SensorEventListener {
         super.onCreate();
 
         client = DataClient.getInstance(this);
-
-        Intent intent = new Intent(this, SensorService.class);
-        intent.setAction(Constants.ACTION.RECORD_LABEL_ACTION);
-        PendingIntent pendingIntent = PendingIntent.getService(this, 0, intent, 0);
-
-        Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
-
-        //notify the user that the application has started - the user can also record labels using the notification
-        Notification notification = new NotificationCompat.Builder(this)
-                .setContentTitle("My Gestures")
-                .setTicker("My Gestures")
-                .setContentText("Collecting sensor data...")
-                .setSmallIcon(R.drawable.ic_launcher)
-                .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
-                .setOngoing(true)
-                .setVibrate(new long[]{0,50,100,50,100,50,100,400,100,300,100,350,50,200,100,100,50,600}) //I LOVE THIS!!!
-                .setPriority(Notification.PRIORITY_MAX)
-                .addAction(android.R.drawable.ic_btn_speak_now, "Record Label", pendingIntent).build();
-
-        startForeground(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE, notification); //id is arbitrary, so we choose id=1
-
-        registerSensors();
-    }
-
-    @Override
-    public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null) {
-            if (intent.getAction() != null) {
-                if (intent.getAction().equals(Constants.ACTION.RECORD_LABEL_ACTION)) {
-                    labelTimestamp = SystemClock.elapsedRealtimeNanos();
-                    startListening();
-                }
-            }
-        }
-        return super.onStartCommand(intent, flags, startId);
     }
 
     @Override
     public void onDestroy() {
-        unregisterSensors();
+        Log.d(TAG, "onDestroy()");
         super.onDestroy();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent.getAction().equals(Constants.ACTION.START_SERVICE)){
+            Intent recordIntent = new Intent(this, SensorService.class);
+            recordIntent.setAction(Constants.ACTION.RECORD_LABEL);
+            PendingIntent pendingIntent = PendingIntent.getService(this, 0, recordIntent, 0);
+
+            Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
+
+            //notify the user that the application has started - the user can also record labels using the notification
+            Notification notification = new NotificationCompat.Builder(this)
+                    .setContentTitle("My Gestures")
+                    .setTicker("My Gestures")
+                    .setContentText("Collecting sensor data...")
+                    .setSmallIcon(R.drawable.ic_launcher)
+                    .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
+                    .setOngoing(true)
+                    .setVibrate(new long[]{0, 50, 100, 50, 100, 50, 100, 400, 100, 300, 100, 350, 50, 200, 100, 100, 50, 600}) //I LOVE THIS!!!
+                    .setPriority(Notification.PRIORITY_MAX)
+                    .addAction(android.R.drawable.ic_btn_speak_now, "Record Label", pendingIntent).build();
+
+            startForeground(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE, notification); //id is arbitrary, so we choose id=1
+
+            registerSensors();
+        } else if (intent.getAction().equals(Constants.ACTION.RECORD_LABEL)) {
+            labelTimestamp = SystemClock.elapsedRealtimeNanos();
+            startListening();
+        } else if (intent.getAction().equals(Constants.ACTION.STOP_SERVICE)) {
+            unregisterSensors();
+            stopForeground(true);
+            stopSelf();
+        }
+
+        return START_STICKY;
     }
 
     /**
@@ -188,37 +189,39 @@ public class SensorService extends Service implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-        synchronized(this){ //add sensor data to the appropriate buffer
-            if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER){
+
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            synchronized (this) { //add sensor data to the appropriate buffer
                 accelTimestamps[accelIndex] = event.timestamp;
-                accelValues[3*accelIndex] = event.values[0];
-                accelValues[3*accelIndex + 1] = event.values[1];
-                accelValues[3*accelIndex + 2] = event.values[2];
+                accelValues[3 * accelIndex] = event.values[0];
+                accelValues[3 * accelIndex + 1] = event.values[1];
+                accelValues[3 * accelIndex + 2] = event.values[2];
                 accelIndex++;
-                if (accelIndex >= BUFFER_SIZE){
-                    client.sendSensorData(Sensor.TYPE_ACCELEROMETER, accelTimestamps, accelValues);
+                if (accelIndex >= BUFFER_SIZE) {
+                    client.sendSensorData(Sensor.TYPE_ACCELEROMETER, accelTimestamps.clone(), accelValues.clone());
                     accelIndex = 0;
                 }
-            }else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+            }
+        }else if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
+            synchronized (this) {
                 gyroTimestamps[gyroIndex] = event.timestamp;
-                gyroValues[3*gyroIndex] = event.values[0];
-                gyroValues[3*gyroIndex + 1] = event.values[1];
-                gyroValues[3*gyroIndex + 2] = event.values[2];
+                gyroValues[3 * gyroIndex] = event.values[0];
+                gyroValues[3 * gyroIndex + 1] = event.values[1];
+                gyroValues[3 * gyroIndex + 2] = event.values[2];
                 gyroIndex++;
-                if (gyroIndex >= BUFFER_SIZE){
-                    client.sendSensorData(Sensor.TYPE_GYROSCOPE, gyroTimestamps, gyroValues);
+                if (gyroIndex >= BUFFER_SIZE) {
+                    client.sendSensorData(Sensor.TYPE_GYROSCOPE, gyroTimestamps.clone(), gyroValues.clone());
                     gyroIndex = 0;
                 }
-            }else{
-                Log.w(TAG, "Sensor Not Supported!");
             }
-
+        }else{
+            Log.w(TAG, "Sensor Not Supported!");
         }
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
-
+        Log.i(TAG, "Accuracy changed: " + accuracy);
     }
 
     @Override
