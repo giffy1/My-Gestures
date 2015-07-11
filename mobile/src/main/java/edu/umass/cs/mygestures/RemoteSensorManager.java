@@ -18,21 +18,32 @@ import java.util.concurrent.TimeUnit;
 import edu.umass.cs.shared.SharedConstants;
 
 /**
- * TODO: Create RemoteSensorService instead, which extends Service: When the
- * service starts, connect to the Google API client and send the start sensor
- * service command to the wearable; when the remote sensor service ends, tell
- * the wearable to stop the sensor service. This will allow us to build a
- * custom notification to inform the user that the wearable is collecting sensor data.
+ * The Remote Sensor Manager is responsible for remotely communicating with the motion sensors
+ * on the wearable device. For instance, it can send commands to the wearable device to start/stop
+ * sensor data collection.
+ *
+ * @author Sean Noran
+ *
+ * @see com.google.android.gms.wearable.DataApi
+ * @see GoogleApiClient
  */
 public class RemoteSensorManager {
+    /** used for debugging purposes */
     private static final String TAG = RemoteSensorManager.class.getName();
-    private static final int CLIENT_CONNECTION_TIMEOUT = 5000; //wait 5 secs
 
+    /** the number of milliseconds to wait for a client connection */
+    private static final int CLIENT_CONNECTION_TIMEOUT = 5000;
+
+    /** singleton instance of the remote sensor manager */
     private static RemoteSensorManager instance;
 
+    /** used for asynchronous message sending on a non-UI thread */
     private ExecutorService executorService;
+
+    /** the Google API client is responsible for communicating with the wearable device over the data layer */
     private GoogleApiClient googleApiClient;
 
+    /** return singleton instance of the remote sensor manager, instantiating if necessary */
     public static synchronized RemoteSensorManager getInstance(Context context) {
         if (instance == null) {
             instance = new RemoteSensorManager(context.getApplicationContext());
@@ -50,6 +61,10 @@ public class RemoteSensorManager {
         this.executorService = Executors.newCachedThreadPool();
     }
 
+    /**
+     * validate the connection between the handheld and the wearable device.
+     * @return true if successful, false if unsuccessful, i.e. no connection after {@link RemoteSensorManager#CLIENT_CONNECTION_TIMEOUT} milliseconds
+     */
     private boolean validateConnection() {
         if (googleApiClient.isConnected()) {
             return true;
@@ -60,6 +75,7 @@ public class RemoteSensorManager {
         return result.isSuccess();
     }
 
+    /** send a message to the wearable device to start data collection */
     public void startSensorService() {
         executorService.submit(new Runnable() {
             @Override
@@ -70,6 +86,7 @@ public class RemoteSensorManager {
         });
     }
 
+    /** send a message to the wearable device to stop data collection */
     public void stopSensorService() {
         executorService.submit(new Runnable() {
             @Override
@@ -80,6 +97,10 @@ public class RemoteSensorManager {
         });
     }
 
+    /**
+     * sends a command/message (referred to as a path in Google API logic) to the wearable application
+     * @param path the message sent to the wearable device
+     */
     private void sendMessageInBackground(final String path) {
         if (validateConnection()) {
             List<Node> nodes = Wearable.NodeApi.getConnectedNodes(googleApiClient).await().getNodes();
