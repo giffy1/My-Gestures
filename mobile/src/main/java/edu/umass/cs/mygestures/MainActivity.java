@@ -41,7 +41,7 @@ public class MainActivity extends Activity {
         Button startButton = (Button) findViewById(R.id.start_button);
         Button stopButton = (Button) findViewById(R.id.stop_button);
         Button deleteButton = (Button) findViewById(R.id.delete_button);
-        TextView startTimeText = (TextView) findViewById(R.id.start_time_text);
+        final TextView startTimeText = (TextView) findViewById(R.id.start_time_text);
 
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
