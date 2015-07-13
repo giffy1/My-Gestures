@@ -14,9 +14,11 @@ import android.widget.Toast;
  * The Main Activity is the application's entry point on the handheld device. It is where the user
  * interacts with the background data collection service. Here the user can start/stop the service
  * and delete the existing data if necessary.
+ *
+ * @see Activity
+ * @see RemoteSensorManager
+ *
  * @author Sean Noran 6/8/18
- * @See Activity
- * @See RemoteSensorManager
  */
 public class MainActivity extends Activity {
     //TODO: Add options to change sampling rate, choose storage location/filename, edit falsely entered labels, etc.
@@ -25,10 +27,6 @@ public class MainActivity extends Activity {
 
     /** used for debugging purposes */
     private static final String TAG = MainActivity.class.getName();
-
-    private Button startButton, stopButton, deleteButton;
-
-    private TextView startTimeText;
 
     /** The sensor manager which handles sensors on the wearable device remotely */
     private RemoteSensorManager remoteSensorManager;
@@ -40,10 +38,10 @@ public class MainActivity extends Activity {
 
         remoteSensorManager = RemoteSensorManager.getInstance(this);
 
-        startButton = (Button) findViewById(R.id.start_button);
-        stopButton = (Button) findViewById(R.id.stop_button);
-        deleteButton = (Button) findViewById(R.id.delete_button);
-        startTimeText = (TextView) findViewById(R.id.start_time_text);
+        Button startButton = (Button) findViewById(R.id.start_button);
+        Button stopButton = (Button) findViewById(R.id.stop_button);
+        Button deleteButton = (Button) findViewById(R.id.delete_button);
+        TextView startTimeText = (TextView) findViewById(R.id.start_time_text);
 
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override

@@ -18,11 +18,6 @@ public class ListenerService extends WearableListenerService {
     private static final String TAG = ListenerService.class.getName();
 
     @Override
-    public void onCreate() {
-        super.onCreate();
-    }
-
-    @Override
     public void onMessageReceived(MessageEvent messageEvent) {
         if (messageEvent.getPath().equals(SharedConstants.COMMANDS.START_SENSOR_SERVICE)) {
             Intent startServiceIntent = new Intent(this, SensorService.class);

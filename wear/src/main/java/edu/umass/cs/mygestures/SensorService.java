@@ -56,10 +56,10 @@ public class SensorService extends Service implements SensorEventListener {
     private DataClient client;
 
     /** Speech Recognizer object to transcribe speech */
-    protected SpeechRecognizer mSpeechRecognizer;
+    private SpeechRecognizer mSpeechRecognizer;
 
     /** Used to start/configure the Speech Recognition service */
-    protected Intent mIntent;
+    private Intent mIntent;
 
     /** Buffer of timestamps for gyroscope data */
     private long[] gyroTimestamps;
@@ -247,7 +247,7 @@ public class SensorService extends Service implements SensorEventListener {
     }
 
     /** The Listener handles the events raised by the Speech Recognizer such as errors and results */
-    protected class SpeechRecognitionListener implements RecognitionListener
+    class SpeechRecognitionListener implements RecognitionListener
     {
         private final String TAG = SpeechRecognitionListener.class.getName();
 

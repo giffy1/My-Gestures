@@ -38,10 +38,10 @@ public class RemoteSensorManager {
     private static RemoteSensorManager instance;
 
     /** used for asynchronous message sending on a non-UI thread */
-    private ExecutorService executorService;
+    private final ExecutorService executorService;
 
     /** the Google API client is responsible for communicating with the wearable device over the data layer */
-    private GoogleApiClient googleApiClient;
+    private final GoogleApiClient googleApiClient;
 
     /** return singleton instance of the remote sensor manager, instantiating if necessary */
     public static synchronized RemoteSensorManager getInstance(Context context) {

@@ -31,7 +31,7 @@ public class DataClient {
     private static final String TAG = DataClient.class.getName();
 
     /** Google API client used to communicate between devices over data layer */
-    private GoogleApiClient googleApiClient;
+    private final GoogleApiClient googleApiClient;
 
     /** static singleton - we should only have one data client! */
     private static DataClient instance;
@@ -40,7 +40,7 @@ public class DataClient {
     private static final int CLIENT_CONNECTION_TIMEOUT = 5000;
 
     /** used to send data on a separate non-UI thread */
-    private ExecutorService executorService;
+    private final ExecutorService executorService;
 
     /** returns the singleton instance of the class, instantiating if necessary */
     public static DataClient getInstance(Context context) {
