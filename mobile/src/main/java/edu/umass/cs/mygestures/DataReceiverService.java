@@ -75,17 +75,18 @@ public class DataReceiverService extends WearableListenerService{
             float y = values[3*i+1];
             float z = values[3*i+2];
 
+            //TODO: probably better to create multiline string and save that instead of writing each line separately
             String line = timestamp + "," + x + "," + y + "," + z;
 
             //broadcast line to data writer service
             Intent intent = new Intent();
             if (sensorType == Sensor.TYPE_ACCELEROMETER) {
                 intent.putExtra(Constants.VALUES.SENSOR_DATA, line);
-                intent.setAction(Constants.ACTION.SEND_ACCELEROMETER_ACTION);
+                intent.setAction(Constants.ACTION.SEND_ACCELEROMETER);
                 sendBroadcast(intent);
             }else if (sensorType == Sensor.TYPE_GYROSCOPE) {
                 intent.putExtra(Constants.VALUES.SENSOR_DATA, line);
-                intent.setAction(Constants.ACTION.SEND_GYROSCOPE_ACTION);
+                intent.setAction(Constants.ACTION.SEND_GYROSCOPE);
                 sendBroadcast(intent);
             }
 
@@ -109,7 +110,7 @@ public class DataReceiverService extends WearableListenerService{
         //broadcast label to main handheld service
         Intent intent = new Intent();
         intent.putExtra(Constants.VALUES.LABEL, line);
-        intent.setAction(Constants.ACTION.SEND_LABEL_ACTION);
+        intent.setAction(Constants.ACTION.SEND_LABEL);
         sendBroadcast(intent);
     }
 

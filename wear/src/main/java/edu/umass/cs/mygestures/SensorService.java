@@ -80,7 +80,7 @@ public class SensorService extends Service implements SensorEventListener {
     private int accelIndex;
 
     /** Buffer size */
-    private static final int BUFFER_SIZE = 512;
+    private static final int BUFFER_SIZE = 256;
 
     /** When recording audio labels, should the timestamp be recorded when the
      * label is recognized or when the button is pressed? Because the action
@@ -189,7 +189,7 @@ public class SensorService extends Service implements SensorEventListener {
 
     @Override
     public void onSensorChanged(SensorEvent event) {
-
+        //TODO: When the service is ended, the remaining data is not saved because it does not fill buffer
         if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
             synchronized (this) { //add sensor data to the appropriate buffer
                 accelTimestamps[accelIndex] = event.timestamp;

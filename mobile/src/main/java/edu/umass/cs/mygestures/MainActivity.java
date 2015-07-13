@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 /**
@@ -27,6 +28,8 @@ public class MainActivity extends Activity {
 
     private Button startButton, stopButton, deleteButton;
 
+    private TextView startTimeText;
+
     /** The sensor manager which handles sensors on the wearable device remotely */
     private RemoteSensorManager remoteSensorManager;
 
@@ -40,15 +43,17 @@ public class MainActivity extends Activity {
         startButton = (Button) findViewById(R.id.start_button);
         stopButton = (Button) findViewById(R.id.stop_button);
         deleteButton = (Button) findViewById(R.id.delete_button);
+        startTimeText = (TextView) findViewById(R.id.start_time_text);
 
         startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 Intent startIntent = new Intent(MainActivity.this, DataWriterService.class);
-                startIntent.setAction(Constants.ACTION.START_FOREGROUND_ACTION);
+                startIntent.setAction(Constants.ACTION.START_FOREGROUND);
                 startService(startIntent);
 
                 remoteSensorManager.startSensorService();
+                startTimeText.setText(String.valueOf(System.currentTimeMillis()));
             }
         });
 
@@ -56,7 +61,7 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 Intent stopIntent = new Intent(MainActivity.this, DataWriterService.class);
-                stopIntent.setAction(Constants.ACTION.STOP_FOREGROUND_ACTION);
+                stopIntent.setAction(Constants.ACTION.STOP_FOREGROUND);
                 startService(stopIntent);
 
                 remoteSensorManager.stopSensorService();

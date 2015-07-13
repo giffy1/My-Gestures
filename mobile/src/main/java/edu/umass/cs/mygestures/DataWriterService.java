@@ -54,17 +54,17 @@ public class DataWriterService extends Service {
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction() != null) {
-                if (intent.getAction().equals(Constants.ACTION.SEND_ACCELEROMETER_ACTION)) {
+                if (intent.getAction().equals(Constants.ACTION.SEND_ACCELEROMETER)) {
                     String line = intent.getStringExtra(Constants.VALUES.SENSOR_DATA);
                     synchronized (accelWriter) {
                         FileUtil.writeToFile(line, accelWriter);
                     }
-                }else if (intent.getAction().equals(Constants.ACTION.SEND_GYROSCOPE_ACTION)){
+                }else if (intent.getAction().equals(Constants.ACTION.SEND_GYROSCOPE)){
                     String line = intent.getStringExtra(Constants.VALUES.SENSOR_DATA);
                     synchronized (gyroWriter) {
                         FileUtil.writeToFile(line, gyroWriter);
                     }
-                }else if (intent.getAction().equals(Constants.ACTION.SEND_LABEL_ACTION)) {
+                }else if (intent.getAction().equals(Constants.ACTION.SEND_LABEL)) {
                     String line = intent.getStringExtra(Constants.VALUES.LABEL);
                     synchronized (labelWriter) {
                         FileUtil.writeToFile(line, labelWriter);
@@ -87,9 +87,9 @@ public class DataWriterService extends Service {
     public void onCreate(){
         //the intent filter specifies the messages we are interested in receiving
         IntentFilter filter = new IntentFilter();
-        filter.addAction(Constants.ACTION.SEND_ACCELEROMETER_ACTION);
-        filter.addAction(Constants.ACTION.SEND_GYROSCOPE_ACTION);
-        filter.addAction(Constants.ACTION.SEND_LABEL_ACTION);
+        filter.addAction(Constants.ACTION.SEND_ACCELEROMETER);
+        filter.addAction(Constants.ACTION.SEND_GYROSCOPE);
+        filter.addAction(Constants.ACTION.SEND_LABEL);
 
         registerReceiver(receiver, filter);
     }
@@ -116,20 +116,20 @@ public class DataWriterService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId){
-        if (intent.getAction().equals(Constants.ACTION.START_FOREGROUND_ACTION)) {
+        if (intent.getAction().equals(Constants.ACTION.START_FOREGROUND)) {
             Log.i(TAG, "Received Start Service Intent ");
 
             Intent notificationIntent = new Intent(this, MainActivity.class); //open main activity when user clicks on notification
-            notificationIntent.setAction(Constants.ACTION.MAIN_ACTION);
+            notificationIntent.setAction(Constants.ACTION.NAVIGATE_TO_APP);
             notificationIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
 
-            Intent recordIntent = new Intent(this, DataReceiverService.class);
-            recordIntent.setAction(Constants.ACTION.RECORD_LABEL_ACTION);
+            Intent recordIntent = new Intent(this, DataWriterService.class);
+            recordIntent.setAction(Constants.ACTION.RECORD_LABEL);
             PendingIntent recordPendingIntent = PendingIntent.getService(this, 0, recordIntent, 0);
 
-            Intent stopIntent = new Intent(this, DataReceiverService.class);
-            stopIntent.setAction(Constants.ACTION.STOP_FOREGROUND_ACTION);
+            Intent stopIntent = new Intent(this, DataWriterService.class);
+            stopIntent.setAction(Constants.ACTION.STOP_FOREGROUND);
             PendingIntent stopPendingIntent = PendingIntent.getService(this, 0, stopIntent, 0);
 
             Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
@@ -142,15 +142,15 @@ public class DataWriterService extends Service {
                     .setLargeIcon(Bitmap.createScaledBitmap(icon, 128, 128, false))
                     .setContentIntent(pendingIntent)
                     .setPriority(Notification.PRIORITY_MAX) //otherwise buttons will not show up!
-                    .setDeleteIntent(stopPendingIntent) //user can swipe away notification to end service
-                    .addAction(android.R.drawable.ic_btn_speak_now,
-                            "Record Label", recordPendingIntent).build(); //got rid of notification actions, could use them later?
+                    .setOngoing(true)
+                    .addAction(android.R.drawable.ic_btn_speak_now, "Record Label", recordPendingIntent)
+                    .addAction(android.R.drawable.ic_delete, "Stop Service", stopPendingIntent).build(); //got rid of notification actions, could use them later?
 
             startForeground(Constants.NOTIFICATION_ID.FOREGROUND_SERVICE, notification);
-        } else if (intent.getAction().equals(Constants.ACTION.RECORD_LABEL_ACTION)) {
+        } else if (intent.getAction().equals(Constants.ACTION.RECORD_LABEL)) {
             Log.i(TAG, "Clicked Record Label");
             Toast.makeText(getApplicationContext(), "Please record labels using the wearable device!", Toast.LENGTH_LONG).show();
-        } else if (intent.getAction().equals(Constants.ACTION.STOP_FOREGROUND_ACTION)) {
+        } else if (intent.getAction().equals(Constants.ACTION.STOP_FOREGROUND)) {
             Log.i(TAG, "Received Stop Service Intent");
 
             //make sure wearable sensor service stops when the service ends
